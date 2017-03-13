@@ -72,7 +72,6 @@ for epoch in range(args.epochs):
     for i in range(0, Xtrain.shape[0], batch_size):
         j = i+batch_size
         if j <= Xtrain.shape[0]:
-            #print (Xtrain.dtype)
             X = torch.from_numpy(
                     np.transpose(Xtrain[i:j].astype(float),[0,3,1,2]))
             S1 = S1train[i:j]
@@ -96,7 +95,7 @@ for epoch in range(args.epochs):
         elapsed = time.time() - tstart
         print(fmt_row(10, [epoch, avg_cost/num_batches, avg_err/num_batches, elapsed]))
 
-#test mode
+#test 
 Xtest_ = torch.from_numpy(np.transpose(Xtest.astype(float),[0,3,1,2]))
 ytest_ = torch.from_numpy(ytest.astype(np.int64))
 output_test,prediction_test = model(Xtest_, S1test, S2test)

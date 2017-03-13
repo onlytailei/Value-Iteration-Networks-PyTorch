@@ -23,12 +23,6 @@ class VIN_Block(nn.Module):
         self.ch_q = arg.ch_q
         self.state_batch_size = arg.statebatchsize 
 
-        #k=10
-        #ch_i = 10
-        #ch_h = 10
-        #ch_q = 10
-
-        # TODO initialize several weights here
         self.bias = Parameter(torch.zeros(self.ch_h).random_(0,1)*0.01)
         self.register_parameter('bias', self.bias)
         self.w0 = Parameter(torch.zeros(self.ch_h,self.ch_i,3,3).random_(0,1)*0.01)
@@ -44,19 +38,12 @@ class VIN_Block(nn.Module):
         self.softmax = nn.Softmax()
 
     def forward(self, X, S1, S2):
-        # forward of the whole network
-
         X=autograd.Variable(X)
-
-        #print (X.data.numpy().shape) 
-        #print (self.w0.data.numpy().shape)
         h = F.conv2d(X.float(), self.w0, bias = self.bias, padding = 1)
         r = F.conv2d(h, self.w1)
         q = F.conv2d(r, self.w, padding = 1)
         v,_ = torch.max(q, 1) 
 
-        #print (v.data.numpy().shape)
-        #print (r.data.numpy().shape)
         for i in range(0, self.k-1):
 
             rv = torch.cat((r,v),1)
@@ -75,7 +62,8 @@ class VIN_Block(nn.Module):
 
         q_ = torch.transpose(q, 0,2)
         q__ = torch.transpose(q_,1 ,3)
-
+        
+        # TODO need to be optimize cause there is no gather_nd in pytorch
         abs_q = torch.index_select(
                 torch.index_select(
                     torch.index_select(q__,0,
@@ -96,7 +84,6 @@ class VIN_Block(nn.Module):
 
         final_q = torch.squeeze(abs_q)
         output = F.linear(final_q, self.w_o)
-        # TODO softmax output 
         prediction = self.softmax(output)
         return output,prediction
 
