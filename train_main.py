@@ -16,6 +16,8 @@ from model import VIN_Block
 from data import *
 import torch.optim as optim
 import torch.autograd as autograd
+import torch.nn as nn
+from utils import *
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--input_path", type = str, 
@@ -51,31 +53,53 @@ parser.add_argument('--logdir', type = str,
 
 args = parser.parse_args()
 
-# Input tensor 
-# Input batches of vertical positions (in different states)
-# Input batches of horizental positions (in different states)
-
-#build the model
 model = VIN_Block(args)
-#print (model.parameters())
-optimizer = optim.RMSprop(model.parameters())
+optimizer = optim.RMSprop(model.parameters(), args.lr)
+criterion = nn.CrossEntropyLoss()
+dtype = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.FloatTensor
+model.type(dtype)
 
-Xtrain, S1train, S2train, ytrain, Xtest, S1test, S2test, ytest = process_gridworld_data(input=args.input_path, imsize=args.imsize)
-
+Xtrain, S1train, S2train, ytrain, Xtest, S1test, S2test, ytest = process_gridworld_data(
+        input=args.input_path, 
+        imsize=args.imsize)
 batch_size = args.batchsize
 
-
+print(fmt_row(10, ["Epoch", "Train Cost", "Train Err", "Epoch Time"]))
 for epoch in range(args.epochs):
     tstart = time.time()
+    avg_err, avg_cost = 0.0, 0.0
     num_batches = int(Xtrain.shape[0]/batch_size)     
     for i in range(0, Xtrain.shape[0], batch_size):
         j = i+batch_size
         if j <= Xtrain.shape[0]:
             #print (Xtrain.dtype)
-            X = torch.from_numpy(np.transpose(Xtrain[i:j].astype(float),[0,3,1,2]))
+            X = torch.from_numpy(
+                    np.transpose(Xtrain[i:j].astype(float),[0,3,1,2]))
             S1 = S1train[i:j]
             S2 = S2train[i:j]
-            y = torch.from_numpy(ytrain[i * args.statebatchsize:j * args.statebatchsize].astype(float))
-            model(X, S1, S2)
-            break
-    break
+            y_origin = ytrain[i * args.statebatchsize:j * 
+                    args.statebatchsize].astype(np.int64)
+            y = torch.from_numpy(y_origin)
+
+            output,prediction = model(X, S1, S2)
+            loss = criterion(output,autograd.Variable(y))    
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+            cp = np.argmax(prediction.data.numpy(),1)
+            err = np.mean(cp!=y_origin)
+            avg_cost+=loss.data.numpy()[0]
+            avg_err+=err
+    
+    if epoch % args.display_step == 0:
+        elapsed = time.time() - tstart
+        print(fmt_row(10, [epoch, avg_cost/num_batches, avg_err/num_batches, elapsed]))
+
+#test mode
+Xtest_ = torch.from_numpy(np.transpose(Xtest.astype(float),[0,3,1,2]))
+ytest_ = torch.from_numpy(ytest.astype(np.int64))
+output_test,prediction_test = model(Xtest_, S1test, S2test)
+cp_test = np.argmax(prediction_test.data.numpy(),1)
+acc = np.mean(cp_test!=ytest)
+print("Accuracy: {}%".format(100 * (1 - acc)))

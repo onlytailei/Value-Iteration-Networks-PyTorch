@@ -41,6 +41,7 @@ class VIN_Block(nn.Module):
         self.register_parameter('w_fb', self.w_fb)
         self.w_o = Parameter(torch.zeros(8, self.ch_q).random_(0,1)*0.01)
         self.register_parameter('w_o', self.w_o)
+        self.softmax = nn.Softmax()
 
     def forward(self, X, S1, S2):
         # forward of the whole network
@@ -95,9 +96,9 @@ class VIN_Block(nn.Module):
 
         final_q = torch.squeeze(abs_q)
         output = F.linear(final_q, self.w_o)
-        print (output.data.numpy().shape) 
         # TODO softmax output 
-        return output
+        prediction = self.softmax(output)
+        return output,prediction
 
 if __name__ == "__main__":
     obj = VIN_Block()
