@@ -14,6 +14,9 @@ import torch.autograd as autograd
 import torch.nn.functional as F
 # use torch functional layer here
 
+def agLT(x):
+    return autograd.Variable(torch.LongTensor([x]))
+
 class VIN_Block(nn.Module):
     def __init__(self, arg):
         super(VIN_Block, self).__init__()
@@ -65,21 +68,17 @@ class VIN_Block(nn.Module):
         
         # TODO need to be optimize cause there is no gather_nd in pytorch
         abs_q = torch.index_select(
-                torch.index_select(
-                    torch.index_select(q__,0,
-                        autograd.Variable(torch.LongTensor([ins1[0]]))),
-                    1,autograd.Variable(torch.LongTensor([ins2[0]]))),
-                2,autograd.Variable(torch.LongTensor([rprn[0]])))
+                    torch.index_select(
+                        torch.index_select(q__,0,agLT(ins1[0])),
+                    1,agLT(ins2[0])),
+                2,agLT(rprn[0]))
         for item in np.arange(1,len_):
             abs_q_ = torch.index_select(
                     torch.index_select(
                         torch.index_select(q__,0,
-                            autograd.Variable(
-                                torch.LongTensor([ins1[item]]))),
-                        1,autograd.Variable(
-                            torch.LongTensor([ins2[item]]))),
-                    2,autograd.Variable(
-                        torch.LongTensor([rprn[item]])))
+                                agLT(ins1[item])),
+                        1,agLT(ins2[item])),
+                    2,agLT(rprn[item]))
             abs_q = torch.cat((abs_q,abs_q_),0)
 
         final_q = torch.squeeze(abs_q)
