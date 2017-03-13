@@ -41,7 +41,7 @@ class VIN_Block(nn.Module):
         self.softmax = nn.Softmax()
 
     def forward(self, X, S1, S2):
-        X=autograd.Variable(X)
+        X = autograd.Variable(X)
         h = F.conv2d(X.float(), self.w0, bias = self.bias, padding = 1)
         r = F.conv2d(h, self.w1)
         q = F.conv2d(r, self.w, padding = 1)
